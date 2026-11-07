@@ -58,6 +58,7 @@ Place your cursor on a feature and press `<leader>ae`, or run
 - `:AIClarifyCancel` — cancel either pending explanation.
 
 The Markdown answer opens beside your cursor, like LSP hover, with a loading spinner.
+Moving the source cursor closes the float and cancels any pending explanation.
 Focus stays in your code. Use `<C-w>w` to enter the window, `gx` to open a URL,
 and `q` or `<Esc>` to close. Set `window = 'split'` for the right/bottom-right pane.
 The spinner uses Noice's highlight when available; Noice is optional.

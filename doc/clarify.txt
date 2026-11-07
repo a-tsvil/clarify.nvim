@@ -26,6 +26,8 @@ COMMANDS                                              *:AIClarify*
 PANE                                                  *clarify-pane*
     Opens beside your cursor like LSP hover, with an animated loading spinner.
     Uses Neovim's LSP popup positioning to fit above/below and avoid screen edges.
+    Moving the source cursor or typing closes the float and cancels its request.
+    Cursor movement inside the explanation window keeps it open for reading.
     Set window = 'split' for the right/bottom-right pane layout.
     Focus stays in your code. Use CTRL-W w to enter. q or Escape closes the window;
     gx opens a documentation URL. gs opens Google's Search Suggestions widget

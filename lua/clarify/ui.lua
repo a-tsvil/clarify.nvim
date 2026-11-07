@@ -23,6 +23,32 @@ local function position(pane)
   end
 end
 
+local function close_on_move(pane)
+  if pane.close_autocmd then
+    pcall(vim.api.nvim_del_autocmd, pane.close_autocmd)
+    pane.close_autocmd = nil
+  end
+  if not vim.api.nvim_win_is_valid(pane.origin) then
+    return
+  end
+  local cursor = vim.api.nvim_win_get_cursor(pane.origin)
+  local watch
+  watch = vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI', 'InsertCharPre' }, {
+    buffer = vim.api.nvim_win_get_buf(pane.origin),
+    callback = function(event)
+      -- Ignore a queued movement event from before the popup opened.
+      if event.event == 'InsertCharPre' or not vim.deep_equal(cursor, vim.api.nvim_win_get_cursor(0)) then
+        vim.schedule(function()
+          if pane.close_autocmd == watch and vim.api.nvim_win_is_valid(pane.win) then
+            vim.api.nvim_win_close(pane.win, true)
+          end
+        end)
+      end
+    end,
+  })
+  pane.close_autocmd = watch
+end
+
 function M.open(layout)
   layout = layout or 'float'
   local tab = vim.api.nvim_get_current_tabpage()
@@ -39,6 +65,7 @@ function M.open(layout)
           pane.origin = vim.api.nvim_get_current_win()
         end
         position(pane)
+        close_on_move(pane)
       end
       return pane
     end
@@ -86,11 +113,17 @@ function M.open(layout)
     once = true,
     callback = function()
       M.stop_loading(pane)
+      if pane.close_autocmd then
+        pcall(vim.api.nvim_del_autocmd, pane.close_autocmd)
+      end
       if panes[tab] == pane then
         panes[tab] = nil
       end
     end,
   })
+  if layout == 'float' then
+    close_on_move(pane)
+  end
   local function close()
     vim.api.nvim_win_close(win, true)
   end
