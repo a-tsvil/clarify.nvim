@@ -5,18 +5,22 @@ local spinner_ns = vim.api.nvim_create_namespace('ClarifySpinner')
 local function float_config()
   local width = math.max(1, math.min(88, vim.o.columns - 4))
   local height = math.max(1, math.min(28, vim.o.lines - vim.o.cmdheight - 4))
-  return {
-    relative = 'editor',
-    width = width,
-    height = height,
-    row = math.max(0, math.floor((vim.o.lines - vim.o.cmdheight - height - 2) / 2)),
-    col = math.max(0, math.floor((vim.o.columns - width - 2) / 2)),
+  local options = vim.lsp.util.make_floating_popup_options(width, height, {
     border = 'rounded',
     title = ' Clarify ',
     title_pos = 'center',
-    style = 'minimal',
     focusable = true,
-  }
+  })
+  options.height = math.max(1, options.height)
+  return options
+end
+
+local function position(pane)
+  if vim.api.nvim_win_is_valid(pane.origin) then
+    vim.api.nvim_win_call(pane.origin, function()
+      vim.api.nvim_win_set_config(pane.win, float_config())
+    end)
+  end
 end
 
 function M.open(layout)
@@ -30,6 +34,12 @@ function M.open(layout)
     and vim.api.nvim_win_get_buf(pane.win) == pane.buf
   then
     if pane.layout == layout then
+      if layout == 'float' then
+        if vim.api.nvim_get_current_win() ~= pane.win then
+          pane.origin = vim.api.nvim_get_current_win()
+        end
+        position(pane)
+      end
       return pane
     end
     vim.api.nvim_win_close(pane.win, true)
@@ -69,7 +79,7 @@ function M.open(layout)
   vim.wo[win].relativenumber = false
   vim.wo[win].signcolumn = 'no'
   vim.wo[win].conceallevel = 2
-  pane = { win = win, buf = buf, layout = layout }
+  pane = { win = win, buf = buf, layout = layout, origin = origin }
   panes[tab] = pane
   vim.api.nvim_create_autocmd('WinClosed', {
     pattern = tostring(win),
@@ -166,7 +176,7 @@ vim.api.nvim_create_autocmd('VimResized', {
   callback = function()
     for _, pane in pairs(panes) do
       if pane.layout == 'float' and vim.api.nvim_win_is_valid(pane.win) then
-        vim.api.nvim_win_set_config(pane.win, float_config())
+        position(pane)
       end
     end
   end,

@@ -4,6 +4,10 @@ Explanations of selected code, keywords, functions, macros, and other language f
 inside Neovim, with small examples and documentation links. Uses nearby code and
 available LSP hover text; works without an LSP server too.
 
+> **Web search is disabled by default for both `AIClarify` and `AIExplain`.**
+> Set `web_search = true` in `setup()` to opt in. Without search, documentation
+> links are model suggestions, not verified sources.
+
 Requires **Neovim 0.11+** and **curl**.
 
 ## Install with vim-plug
@@ -30,7 +34,7 @@ After `plug#end()`:
 ```lua
 require('clarify').setup({
   provider = 'gemini',
-  web_search = false, -- opt in by setting true
+  web_search = false, -- disabled by default; set true to opt in
   window = 'float', -- use 'split' for the right/bottom-right pane
   -- gemini_api_key = 'your-key', -- optional override; keep secrets out of Git
 })
@@ -53,10 +57,7 @@ Place your cursor on a feature and press `<leader>ae`, or run
   selections get a walkthrough of how the code works together.
 - `:AIClarifyCancel` — cancel either pending explanation.
 
-**Web search is off by default.** Set `web_search = true` in `setup()` to enable
-provider search for both commands. With `false`, neither command enables search tools.
-
-The Markdown answer opens in a floating window with an animated loading spinner.
+The Markdown answer opens beside your cursor, like LSP hover, with a loading spinner.
 Focus stays in your code. Use `<C-w>w` to enter the window, `gx` to open a URL,
 and `q` or `<Esc>` to close. Set `window = 'split'` for the right/bottom-right pane.
 The spinner uses Noice's highlight when available; Noice is optional.

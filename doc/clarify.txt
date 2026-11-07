@@ -2,6 +2,8 @@
 
 Requires Neovim 0.11+ and curl. See README.md for installation and provider setup.
 
+Web search is DISABLED BY DEFAULT. See |clarify-web-search| to opt in.
+
 COMMANDS                                              *:AIClarify*
 :[range]AIClarify [topic]
     Explain the cursor word or topic using nearby code and optional LSP hover.
@@ -22,18 +24,25 @@ COMMANDS                                              *:AIClarify*
     Cancel the pending explanation. A new request or closing the pane cancels it.
 
 PANE                                                  *clarify-pane*
-    Opens in a floating window by default, with an animated loading spinner.
+    Opens beside your cursor like LSP hover, with an animated loading spinner.
+    Uses Neovim's LSP popup positioning to fit above/below and avoid screen edges.
     Set window = 'split' for the right/bottom-right pane layout.
     Focus stays in your code. Use CTRL-W w to enter. q or Escape closes the window;
     gx opens a documentation URL. gs opens Google's Search Suggestions widget
     in your browser when provided by a grounded Gemini answer.
     Noice's spinner highlight is used when available; no dependency is required.
 
+WEB SEARCH                                            *clarify-web-search*
+    DISABLED BY DEFAULT for both AIClarify and AIExplain.
+    Set web_search = true in setup() to opt in for both commands.
+    Without search, documentation links are model suggestions, not verified
+    sources. Compatible endpoints do not support web search.
+
 CONFIGURATION                                         *clarify-setup*
 >lua
     require('clarify').setup({
       provider = 'gemini', -- openai, anthropic, compatible
-      web_search = false, -- true enables provider search for both commands
+      web_search = false, -- disabled by default; true opts in
       window = 'float', -- or 'split'
       -- gemini_api_key = 'your-key',
       -- model = 'gemini-3.5-flash-lite',
@@ -44,9 +53,6 @@ CONFIGURATION                                         *clarify-setup*
 <
     No default mappings. setup() is optional with Gemini and GEMINI_API_KEY.
     compatible requires model and base_url (API root including /v1 as needed).
-    Web search is opt-in through web_search = true, not command modifiers.
-    Without web search, reference links are model suggestions, not verified.
-    Compatible endpoints require web_search = false.
     Direct key fields: gemini_api_key, openai_api_key, anthropic_api_key,
     compatible_api_key. Only the selected provider's key is used.
     Precedence: api_key > <provider>_api_key > standard environment variable.
