@@ -5,12 +5,18 @@ Requires Neovim 0.11+ and curl. See README.md for installation and provider setu
 COMMANDS                                              *:AIClarify*
 :[range]AIClarify [topic]
     Explain the cursor word or topic using nearby code and optional LSP hover.
-    A range supplies selected lines as context. Brief explanation, 1-2 examples.
+    With a selection/range, explain the selected code as a whole. An optional
+    topic focuses the explanation. Brief explanation, 1-2 examples.
     Does not edit source buffers or override your LSP mappings.
 
 :[range]AIExplain [topic]                              *:AIExplain*
     Detailed explanation of the same feature, with 3-4 examples, mechanisms,
     use cases and pitfalls. Supports the same topic and range as AIClarify.
+    Visual selections preserve character, line, and block boundaries. Select
+    code, then type :AIExplain (or :AIClarify); Vim supplies the visual range.
+    Selections are capped at 80 lines and 12,000 bytes, marked as truncated.
+    A selected keyword/symbol uses the feature explanation style. Expressions,
+    functions, classes and larger selections get a walkthrough of the whole code.
 
 :AIClarifyCancel                                      *:AIClarifyCancel*
     Cancel the pending explanation. A new request or closing the pane cancels it.

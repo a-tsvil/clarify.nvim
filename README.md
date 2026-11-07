@@ -1,6 +1,6 @@
 # clarify.nvim
 
-Concise explanations of keywords, functions, macros, and other language features
+Explanations of selected code, keywords, functions, macros, and other language features
 inside Neovim, with small examples and documentation links. Uses nearby code and
 available LSP hover text; works without an LSP server too.
 
@@ -36,6 +36,7 @@ require('clarify').setup({
 
 vim.keymap.set('n', '<leader>ae', '<cmd>AIClarify<cr>', { desc = 'Explain feature' })
 vim.keymap.set('x', '<leader>ae', ':AIClarify<cr>', { desc = 'Explain selected lines' })
+vim.keymap.set('x', '<leader>aE', ':AIExplain<cr>', { desc = 'Explain selection in detail' })
 ```
 
 Place your cursor on a feature and press `<leader>ae`, or run
@@ -45,8 +46,10 @@ Place your cursor on a feature and press `<leader>ae`, or run
 
 - `:AIClarify [topic]` — explain the cursor word or an explicit topic.
 - `:AIExplain [topic]` — explain in detail with more examples.
-- `:'<,'>AIClarify [topic]` — use selected lines as context.
-- Both explanation commands accept selected lines as context.
+- Select code with `v`, `V`, or `<C-v>`, then run `:AIClarify` or `:AIExplain`
+  to explain the whole selection. An optional topic focuses the explanation.
+- Single keywords or symbols get feature explanations; expressions and larger
+  selections get a walkthrough of how the code works together.
 - `:AIClarifyCancel` — cancel either pending explanation.
 
 **Web search is off by default.** Set `web_search = true` in `setup()` to enable
@@ -71,3 +74,4 @@ are set. Config fields override environment variables:
 
 Requests send a bounded code excerpt and available LSP hover text only when
 invoked. Explanations and suggested links can be wrong; inspect the sources.
+Selections are limited to the first 80 lines and 12,000 bytes.

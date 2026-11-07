@@ -40,6 +40,10 @@ local function run()
     local detailed = providers.build(cfg, prompt, false, true)
     assert(vim.json.encode(req.body):find('Write concise Markdown', 1, true))
     assert(vim.json.encode(detailed.body):find('Write a detailed Markdown explanation', 1, true))
+    assert(vim.json.encode(req.body):find('complete flow of the selected', 1, true))
+    assert(vim.json.encode(detailed.body):find('every meaningful statement or block', 1, true))
+    assert(vim.json.encode(req.body):find('uses the individual-feature style', 1, true))
+    assert(vim.json.encode(detailed.body):find('uses the code-walkthrough style', 1, true))
     local budget = detailed.body.max_tokens
       or detailed.body.max_output_tokens
       or detailed.body.generationConfig.maxOutputTokens
@@ -236,6 +240,55 @@ local function run()
   eq(499, #snapshot.target)
   assert(vim.json.encode(snapshot))
 
+  local original_selection = vim.o.selection
+  vim.o.selection = 'inclusive'
+  vim.fn.setreg('z', 'preserved register')
+  vim.fn.setreg('"', 'preserved unnamed register')
+  local function selection(lines, keys, expected)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+    vim.cmd('normal! ' .. keys)
+    local captured = context.capture({ args = '', range = 0 })
+    eq('Selected code', captured.target)
+    eq(expected, captured.code)
+    assert(captured.selection)
+    assert(vim.json.decode(context.prompt(captured, '')).selection)
+    eq('n', vim.fn.mode())
+    eq('preserved register', vim.fn.getreg('z'))
+    eq('preserved unnamed register', vim.fn.getreg('"'))
+    return captured
+  end
+  selection({ 'left(foo + bar)right' }, 'gg05lv8l', 'foo + bar')
+  selection({ 'left(foo + bar)right' }, 'gg013lv8h', 'foo + bar')
+  selection({ 'left(λ + β)right' }, 'gg05lv4l', 'λ + β')
+  selection({ 'before first', 'second after' }, 'gg07lvj05l', 'first\nsecond')
+  selection({ 'first line', 'second line' }, 'ggVj', 'first line\nsecond line')
+  selection({ 'abcXYZdef', 'ghiUVWjkl' }, 'gg03l' .. vim.keycode('<C-v>') .. 'j2l', 'XYZ\nUVW')
+  vim.o.selection = 'exclusive'
+  selection({ 'left(foo + bar)right' }, 'gg05lv9l', 'foo + bar')
+  vim.o.selection = original_selection
+  local many_lines = {}
+  for i = 1, 100 do
+    many_lines[i] = 'line ' .. i
+  end
+  local limited = selection(many_lines, 'gg0vG$', table.concat(many_lines, '\n', 1, 80))
+  assert(limited.truncated)
+  local blocks, expected_blocks = {}, {}
+  for i = 1, 100 do
+    blocks[i] = 'abcXYZdef'
+  end
+  for i = 1, 80 do
+    expected_blocks[i] = 'XYZ'
+  end
+  limited = selection(blocks, 'gg03l' .. vim.keycode('<C-v>') .. 'G2l', table.concat(expected_blocks, '\n'))
+  assert(limited.truncated)
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, many_lines)
+  local ranged = context.capture({ args = '', range = 2, line1 = 1, line2 = 100 })
+  eq(80, #vim.split(ranged.code, '\n', { plain = true }))
+  assert(ranged.truncated and ranged.selection)
+  assert(vim.json.decode(context.prompt(ranged, '')).excerpt_truncated)
+  local normal = context.capture({ args = 'line', range = 0 })
+  assert(not normal.selection, 'Old visual marks must not affect a normal invocation')
+
   local origin = vim.api.nvim_get_current_win()
   local pane = ui.open()
   eq(origin, vim.api.nvim_get_current_win())
@@ -303,6 +356,60 @@ local function run()
   vim.cmd('AIExplain nil')
   assert(requests[8].body.tools == nil, 'setup defaults must reset web search to off')
   callbacks[8](nil, { text = 'detailed answer without search', sources = {} })
+  for _, command in ipairs({ 'AIClarify', 'AIExplain' }) do
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'left(foo + bar)right' })
+    vim.api.nvim_feedkeys(vim.keycode('gg05lv8l:' .. command .. '<CR>'), 'xt', false)
+    local request = requests[#requests]
+    local payload = vim.json.decode(request.body.contents[1].parts[1].text)
+    eq('Selected code', payload.target)
+    eq('foo + bar', payload.code_excerpt)
+    assert(payload.selection)
+    local system = request.body.systemInstruction.parts[1].text
+    assert(
+      system:find(
+        command == 'AIExplain' and 'every meaningful statement or block' or 'complete flow of the selected',
+        1,
+        true
+      )
+    )
+    assert(request.body.tools == nil)
+    callbacks[#callbacks](nil, { text = 'selected code explanation', sources = {} })
+  end
+  vim.api.nvim_feedkeys(vim.keycode('gg05lv8l:AIExplain data flow<CR>'), 'xt', false)
+  local payload = vim.json.decode(requests[#requests].body.contents[1].parts[1].text)
+  eq('data flow', payload.target)
+  eq('foo + bar', payload.code_excerpt)
+  assert(payload.selection)
+  callbacks[#callbacks](nil, { text = 'focused selection explanation', sources = {} })
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, {
+    'def totals_by_category(purchases):',
+    '    totals = {}',
+    '    for category, price in purchases:',
+    '        totals[category] = totals.get(category, 0) + price',
+    '    return totals',
+  })
+  vim.api.nvim_feedkeys(vim.keycode('ggV4j:<C-u>AIExplain<CR>'), 'xt', false)
+  payload = vim.json.decode(requests[#requests].body.contents[1].parts[1].text)
+  assert(payload.selection, 'Command entry dropping the Visual range must preserve the selection')
+  assert(payload.code_excerpt:find('def totals_by_category', 1, true))
+  assert(payload.code_excerpt:find('return totals', 1, true))
+  callbacks[#callbacks](nil, { text = 'whole function explanation', sources = {} })
+  vim.cmd('AIClarify totals')
+  payload = vim.json.decode(requests[#requests].body.contents[1].parts[1].text)
+  assert(not payload.selection, 'A recovered selection must be consumed once')
+  callbacks[#callbacks](nil, { text = 'keyword explanation', sources = {} })
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'left(foo + bar)right' })
+  vim.api.nvim_feedkeys(vim.keycode('gg05lv8l:<C-u>AIClarify<CR>'), 'xt', false)
+  payload = vim.json.decode(requests[#requests].body.contents[1].parts[1].text)
+  eq('foo + bar', payload.code_excerpt)
+  assert(payload.selection)
+  callbacks[#callbacks](nil, { text = 'character selection explanation', sources = {} })
+  vim.api.nvim_feedkeys(vim.keycode('ggV4j<Esc>'), 'xt', false)
+  vim.api.nvim_exec_autocmds('CursorMoved', {})
+  vim.cmd('AIClarify totals')
+  payload = vim.json.decode(requests[#requests].body.contents[1].parts[1].text)
+  assert(not payload.selection, 'Moving after Visual selection must restore keyword mode')
+  callbacks[#callbacks](nil, { text = 'keyword explanation', sources = {} })
   providers.request = real_request
   assistant.cancel()
   print('All clarify tests passed (HTTP adapters, errors, citations, context, LSP timeout, pane layout, cancellation).')
