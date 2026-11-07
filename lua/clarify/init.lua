@@ -1,5 +1,5 @@
 local M = {}
-local config = { provider = 'gemini', timeout_ms = 30000, lsp_timeout_ms = 200, web_search = false }
+local config = { provider = 'gemini', timeout_ms = 30000, lsp_timeout_ms = 200, web_search = false, window = 'float' }
 local sequence, process, cancel_hover = 0, nil, nil
 local pending
 
@@ -16,9 +16,10 @@ function M.cancel()
   if pending then
     local previous, cancelled = pending, sequence
     pending = nil
+    require('clarify.ui').stop_loading(previous)
     vim.schedule(function()
       if cancelled == sequence then
-        require('clarify.ui').write(previous.pane, previous.label .. '\n\nCancelled.')
+        require('clarify.ui').write(previous, 'Cancelled.')
       end
     end)
   end
@@ -26,10 +27,14 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  local c =
-    vim.tbl_extend('force', { provider = 'gemini', timeout_ms = 30000, lsp_timeout_ms = 200, web_search = false }, opts)
+  local c = vim.tbl_extend(
+    'force',
+    { provider = 'gemini', timeout_ms = 30000, lsp_timeout_ms = 200, web_search = false, window = 'float' },
+    opts
+  )
   assert(require('clarify.providers').defaults[c.provider], 'Unknown AI provider')
   assert(type(c.web_search) == 'boolean', 'web_search must be a boolean')
+  assert(c.window == 'float' or c.window == 'split', 'window must be float or split')
   for _, name in ipairs({ 'timeout_ms', 'lsp_timeout_ms' }) do
     assert(type(c[name]) == 'number' and c[name] > 0 and c[name] < math.huge, name .. ' must be positive and finite')
   end
@@ -54,14 +59,10 @@ function M.explain(opts)
   end
   M.cancel()
   local current = sequence
-  local pane = ui.open()
-  local label = '# ' .. snapshot.target .. '\n\n' .. request.provider .. ' / ' .. request.model
-  if opts.detailed then
-    label = label .. ' · Detailed'
-  end
-  pending = { pane = pane, label = label }
+  local pane = ui.open(config.window)
+  pending = pane
   pane.search_html = nil
-  ui.write(pane, label .. '\n\nLoading explanation… (`q` closes, :AIClarifyCancel cancels)')
+  ui.loading(pane)
   if pane.cancel_autocmd then
     pcall(vim.api.nvim_del_autocmd, pane.cancel_autocmd)
   end
@@ -87,7 +88,7 @@ function M.explain(opts)
     )
     if not ready then
       pending = nil
-      ui.write(pane, label .. '\n\n' .. tostring(prepared))
+      ui.write(pane, 'Unable to load explanation.\n\n' .. tostring(prepared))
       return
     end
     request = prepared
@@ -98,16 +99,16 @@ function M.explain(opts)
       process = nil
       pending = nil
       if err then
-        ui.write(pane, label .. '\n\nRequest failed: ' .. err)
+        ui.write(pane, 'Unable to load explanation.\n\n' .. err)
       else
-        ui.result(pane, answer, label)
+        ui.result(pane, answer)
       end
     end)
     if started then
       process = result
     else
       pending = nil
-      ui.write(pane, label .. '\n\n' .. tostring(result))
+      ui.write(pane, 'Unable to load explanation.\n\n' .. tostring(result))
     end
   end)
 end

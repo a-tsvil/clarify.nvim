@@ -22,16 +22,19 @@ COMMANDS                                              *:AIClarify*
     Cancel the pending explanation. A new request or closing the pane cancels it.
 
 PANE                                                  *clarify-pane*
-    Opens on the right, or below an existing window to the right of the source.
-    Focus stays in your code. Enter with window navigation. q closes the pane;
+    Opens in a floating window by default, with an animated loading spinner.
+    Set window = 'split' for the right/bottom-right pane layout.
+    Focus stays in your code. Use CTRL-W w to enter. q or Escape closes the window;
     gx opens a documentation URL. gs opens Google's Search Suggestions widget
     in your browser when provided by a grounded Gemini answer.
+    Noice's spinner highlight is used when available; no dependency is required.
 
 CONFIGURATION                                         *clarify-setup*
 >lua
     require('clarify').setup({
       provider = 'gemini', -- openai, anthropic, compatible
       web_search = false, -- true enables provider search for both commands
+      window = 'float', -- or 'split'
       -- gemini_api_key = 'your-key',
       -- model = 'gemini-3.5-flash-lite',
       -- api_key = function() return your_secret_store_lookup() end,

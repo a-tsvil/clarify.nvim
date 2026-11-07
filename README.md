@@ -31,6 +31,7 @@ After `plug#end()`:
 require('clarify').setup({
   provider = 'gemini',
   web_search = false, -- opt in by setting true
+  window = 'float', -- use 'split' for the right/bottom-right pane
   -- gemini_api_key = 'your-key', -- optional override; keep secrets out of Git
 })
 
@@ -55,9 +56,11 @@ Place your cursor on a feature and press `<leader>ae`, or run
 **Web search is off by default.** Set `web_search = true` in `setup()` to enable
 provider search for both commands. With `false`, neither command enables search tools.
 
-The Markdown pane opens on the right, or below an existing window to the right.
-Focus stays in your code. Use `<C-w>l` to enter the pane, `gx` to open a URL,
-and `q` to close. Fenced-code highlighting depends on your Neovim configuration.
+The Markdown answer opens in a floating window with an animated loading spinner.
+Focus stays in your code. Use `<C-w>w` to enter the window, `gx` to open a URL,
+and `q` or `<Esc>` to close. Set `window = 'split'` for the right/bottom-right pane.
+The spinner uses Noice's highlight when available; Noice is optional.
+Fenced-code highlighting depends on your Neovim configuration.
 For Gemini search answers, `gs` opens Google's Search Suggestions in a browser.
 
 ## Providers and keys
