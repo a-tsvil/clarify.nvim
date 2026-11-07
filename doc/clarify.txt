@@ -1,0 +1,57 @@
+*clarify.txt*  AI explanations beside your code
+
+Requires Neovim 0.11+ and curl. See README.md for installation and provider setup.
+
+COMMANDS                                              *:AIClarify*
+:[range]AIClarify [topic]
+    Explain the cursor word or topic using nearby code and optional LSP hover.
+    A range supplies selected lines as context. Brief explanation, 1-2 examples.
+    Does not edit source buffers or override your LSP mappings.
+
+:[range]AIExplain [topic]                              *:AIExplain*
+    Detailed explanation of the same feature, with 3-4 examples, mechanisms,
+    use cases and pitfalls. Supports the same topic and range as AIClarify.
+
+:AIClarifyCancel                                      *:AIClarifyCancel*
+    Cancel the pending explanation. A new request or closing the pane cancels it.
+
+PANE                                                  *clarify-pane*
+    Opens on the right, or below an existing window to the right of the source.
+    Focus stays in your code. Enter with window navigation. q closes the pane;
+    gx opens a documentation URL. gs opens Google's Search Suggestions widget
+    in your browser when provided by a grounded Gemini answer.
+
+CONFIGURATION                                         *clarify-setup*
+>lua
+    require('clarify').setup({
+      provider = 'gemini', -- openai, anthropic, compatible
+      web_search = false, -- true enables provider search for both commands
+      -- gemini_api_key = 'your-key',
+      -- model = 'gemini-3.5-flash-lite',
+      -- api_key = function() return your_secret_store_lookup() end,
+      timeout_ms = 30000,
+      lsp_timeout_ms = 200,
+    })
+<
+    No default mappings. setup() is optional with Gemini and GEMINI_API_KEY.
+    compatible requires model and base_url (API root including /v1 as needed).
+    Web search is opt-in through web_search = true, not command modifiers.
+    Without web search, reference links are model suggestions, not verified.
+    Compatible endpoints require web_search = false.
+    Direct key fields: gemini_api_key, openai_api_key, anthropic_api_key,
+    compatible_api_key. Only the selected provider's key is used.
+    Precedence: api_key > <provider>_api_key > standard environment variable.
+    Standard variables: GOOGLE_API_KEY or GEMINI_API_KEY for Gemini,
+    OPENAI_API_KEY for OpenAI/compatible, ANTHROPIC_API_KEY for Anthropic.
+    GOOGLE_API_KEY wins over GEMINI_API_KEY if both are set. No custom env names
+    or automatic .env loading are supported.
+    Keys accept strings or functions; a nil function result falls back to env.
+    Keep literal keys in a private configuration file outside version control.
+
+PRIVACY                                               *clarify-privacy*
+    Sends up to 12 surrounding lines on each side, or 80 range lines, capped at
+    12,000 code bytes; up to 8,000 LSP hover bytes; target, filetype and position.
+    Runs only on explicit command. Provider data policies and API charges apply.
+    Model explanations and links can be incorrect; inspect the cited evidence.
+
+vim:tw=78:ts=8:ft=help:norl:
