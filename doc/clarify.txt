@@ -54,7 +54,14 @@ CONFIGURATION                                         *clarify-setup*
     })
 <
     No default mappings. setup() is optional with Gemini and GEMINI_API_KEY.
+    Default models: gemini = gemini-3.5-flash-lite, openai = gpt-4.1-mini,
+    anthropic = claude-haiku-5-5. Set model to override the selected provider's
+    default; omit it to keep the default. Use a model supporting that provider's
+    API (Gemini generateContent, OpenAI Responses, Anthropic Messages) and,
+    when enabled, its web search tool.
     compatible requires model and base_url (API root including /v1 as needed).
+    base_url also overrides hosted API roots. HTTPS is required except for
+    local HTTP on localhost or 127.0.0.1.
     Direct key fields: gemini_api_key, openai_api_key, anthropic_api_key,
     compatible_api_key. Only the selected provider's key is used.
     Precedence: api_key > <provider>_api_key > standard environment variable.
@@ -64,6 +71,24 @@ CONFIGURATION                                         *clarify-setup*
     or automatic .env loading are supported.
     Keys accept strings or functions; a nil function result falls back to env.
     Keep literal keys in a private configuration file outside version control.
+
+LOCAL OLLAMA                                          *clarify-ollama*
+    Start Ollama (ollama serve) and pull a local model (ollama pull llama3.2).
+    Use its OpenAI-compatible API:
+>lua
+    require('clarify').setup({
+      provider = 'compatible',
+      base_url = 'http://localhost:11434/v1',
+      model = 'llama3.2', -- exact name from ollama list
+      api_key = '', -- no key needed; skip OPENAI_API_KEY
+      web_search = false,
+      timeout_ms = 120000,
+    })
+<
+    Both commands use this model. The plugin does not start Ollama or download
+    models. With a downloaded local model, context stays on your Ollama server.
+    Web search is unavailable; documentation links are unverified suggestions.
+    API details: https://docs.ollama.com/api/openai-compatibility
 
 PRIVACY                                               *clarify-privacy*
     Sends up to 12 surrounding lines on each side, or 80 range lines, capped at

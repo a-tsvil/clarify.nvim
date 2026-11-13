@@ -31,6 +31,24 @@ local function run()
   )
   local base = 'http://127.0.0.1:' .. port
   local prompt = 'quote " slash \\ newline\nλ'
+  for provider, model in pairs({
+    gemini = 'gemini-3.5-flash-lite',
+    openai = 'gpt-4.1-mini',
+    anthropic = 'claude-haiku-5-5',
+  }) do
+    local cfg = { provider = provider, api_key = 'fixture-secret' }
+    eq(model, providers.build(cfg, prompt, false).model)
+    cfg.model = 'custom-model'
+    local req = providers.build(cfg, prompt, false)
+    eq('custom-model', req.model)
+    if provider == 'gemini' then
+      assert(req.url:find('/models/custom-model:generateContent', 1, true))
+    else
+      eq('custom-model', req.body.model)
+    end
+    cfg.model = nil
+    eq(model, providers.build(cfg, prompt, false).model)
+  end
   for _, provider in ipairs({ 'gemini', 'openai', 'anthropic', 'compatible' }) do
     local cfg = { provider = provider, base_url = base, model = 'fixture' }
     cfg[provider .. '_api_key'] = 'fixture-secret'
@@ -100,6 +118,27 @@ local function run()
     end
     vim.env[env_name], vim.env.GOOGLE_API_KEY = original_key, original_google
   end
+  local local_request = providers.build({
+    provider = 'compatible',
+    base_url = base .. '/v1/',
+    model = 'llama3.2',
+    api_key = '',
+  }, prompt, false)
+  eq(base .. '/v1/chat/completions', local_request.url)
+  eq('llama3.2', local_request.body.model)
+  eq({ 'Content-Type: application/json' }, local_request.headers)
+  local local_done, local_error, local_answer
+  providers.request(local_request, 3000, function(err, answer)
+    local_error, local_answer, local_done = err, answer, true
+  end)
+  assert(
+    vim.wait(4000, function()
+      return local_done
+    end),
+    'Local model request did not complete'
+  )
+  assert(not local_error, local_error)
+  eq('Compatible fixture', local_answer.text)
   for _, test in ipairs({ { '/error', '429' }, { '/invalid', 'invalid JSON' } }) do
     local req =
       providers.build({ provider = 'openai', base_url = base .. test[1], api_key = 'fixture-secret' }, prompt, false)

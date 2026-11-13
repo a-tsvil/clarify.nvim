@@ -9,7 +9,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
-        assert 'fixture-secret' in str(self.headers)
+        if self.path == '/v1/chat/completions':
+            assert self.headers.get('Authorization') is None
+            assert body['model'] == 'llama3.2'
+        else:
+            assert 'fixture-secret' in str(self.headers)
         assert 'quote " slash \\ newline\nλ' in json.dumps(body, ensure_ascii=False).replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
         status = 200
         if self.path.startswith('/error'):

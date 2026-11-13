@@ -71,6 +71,57 @@ Supports **Gemini**, **OpenAI**, **Anthropic**, and **OpenAI-compatible endpoint
 See `:help clarify-setup` for settings; use your provider's documentation for
 models, endpoint URLs, account access, and API keys.
 
+### Default models and overrides
+
+Gemini is the default provider. Each hosted provider has a preconfigured model:
+
+| `provider` | Default `model` | API |
+| --- | --- | --- |
+| `gemini` | `gemini-3.5-flash-lite` | Gemini generateContent |
+| `openai` | `gpt-4.1-mini` | OpenAI Responses |
+| `anthropic` | `claude-haiku-5-5` | Anthropic Messages |
+| `compatible` | None; set `model` and `base_url` | Chat Completions |
+
+Set `model` in `setup()` to override the selected provider's default:
+
+```lua
+require('clarify').setup({
+  provider = 'gemini',
+  model = 'gemini-3.5-flash-lite', -- replace with your chosen model ID
+})
+```
+
+The same `model` option works with every provider. Omit it to keep the hosted
+provider's default. Choose a model available to your account that supports the
+provider's API above; if enabling `web_search`, it must support that tool too.
+`base_url` can also override the API root (include `/v1` or `/v1beta` as needed).
+Endpoints must use HTTPS, except local HTTP on `localhost` or `127.0.0.1`.
+
+### Local Ollama models
+
+Yes: use Ollama through its
+[OpenAI-compatible API](https://docs.ollama.com/api/openai-compatibility).
+Start Ollama with `ollama serve` if it is not already running, and download a
+local model, for example with `ollama pull llama3.2`. Then configure:
+
+```lua
+require('clarify').setup({
+  provider = 'compatible',
+  base_url = 'http://localhost:11434/v1',
+  model = 'llama3.2', -- use the exact name shown by `ollama list`
+  api_key = '', -- no key needed; avoid reusing OPENAI_API_KEY
+  web_search = false, -- required for compatible endpoints
+  timeout_ms = 120000, -- allow time for local model loading and generation
+})
+```
+
+Both commands use this model. With a downloaded local model and this local URL,
+code and LSP context go to your Ollama server. Ollama must be running; the plugin
+does not start it or download models. Web search is unavailable through the
+compatible provider, so documentation links remain unverified model suggestions.
+
+### API keys
+
 Keys come from the standard environment variables: `GOOGLE_API_KEY` or
 `GEMINI_API_KEY` for Gemini, `OPENAI_API_KEY` for OpenAI/compatible, and
 `ANTHROPIC_API_KEY` for Anthropic. Google's variable wins if both Gemini variables
